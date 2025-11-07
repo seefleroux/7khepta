@@ -10,7 +10,12 @@ import os
 import webbrowser
 from PIL import Image, ImageTk
 import io
-from urllib.request import urlopen
+from urllib.request import urlopen, Request
+from urllib.parse import urlparse
+
+# Default values
+DEFAULT_SOURCE_IMAGE_URL = "https://ark-doc.tos-ap-southeast-1.bytepluses.com/doc_image/seedream4_imageToimage.png"
+IMAGE_PREVIEW_TIMEOUT = 10  # seconds
 
 class ImageGeneratorApp:
     def __init__(self, root):
@@ -50,7 +55,7 @@ class ImageGeneratorApp:
         
         # Source Image URL
         ttk.Label(main_frame, text="Source Image URL:").grid(row=row, column=0, sticky=tk.W, pady=5)
-        self.image_url_var = tk.StringVar(value="https://ark-doc.tos-ap-southeast-1.bytepluses.com/doc_image/seedream4_imageToimage.png")
+        self.image_url_var = tk.StringVar(value=DEFAULT_SOURCE_IMAGE_URL)
         ttk.Entry(main_frame, textvariable=self.image_url_var, width=50).grid(row=row, column=1, sticky=(tk.W, tk.E), pady=5)
         row += 1
         
@@ -202,8 +207,16 @@ class ImageGeneratorApp:
     def load_image_preview(self, image_url):
         """Load and display image preview"""
         try:
-            # Download image
-            image_data = urlopen(image_url).read()
+            # Validate URL scheme for security
+            parsed_url = urlparse(image_url)
+            if parsed_url.scheme not in ('http', 'https'):
+                raise ValueError("Only HTTP and HTTPS URLs are allowed")
+            
+            # Download image with timeout
+            req = Request(image_url, headers={'User-Agent': 'ARK-Image-Generator/1.0'})
+            with urlopen(req, timeout=IMAGE_PREVIEW_TIMEOUT) as response:
+                image_data = response.read()
+            
             image = Image.open(io.BytesIO(image_data))
             
             # Resize image to fit in preview (max 600x400)
